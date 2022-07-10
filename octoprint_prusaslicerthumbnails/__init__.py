@@ -98,6 +98,13 @@ class PrusaslicerthumbnailsPlugin(octoprint.plugin.SettingsPlugin,
 				else:
 					png_file.write(base64.b64decode(matches[-1:][0].replace("; ", "").encode()))
 
+			# Genearate a small-palette BMP for embedded use
+			bmp_dimensions = (159,90)
+			bmp_palette_size = 16
+			thumbnail_bmp_filename = os.path.splitext(thumbnail_filename)[0] + '.bmp'
+			with open(thumbnail_bmp_filename, "wb") as bmp_file:
+					bmp_file.write(self._render_bmp(thumbnail_filename, bmp_dimensions, bmp_palette_size))
+
 	# Extracts a thumbnail from a gcode and returns png binary string
 	def _extract_mks_thumbnail(self, gcode_encoded_images):
 
@@ -123,6 +130,21 @@ class PrusaslicerthumbnailsPlugin(octoprint.plugin.SettingsPlugin,
 			png_bytes_string = png_bytes.getvalue()
 
 		return png_bytes_string
+
+	def _render_bmp(self, png_path, dimensions, palette_size):
+		image_bmp_start = Image.open(png_path)
+
+		bg_color = "BLACK"
+		img_resized = image_bmp_start.resize(dimensions)
+		img_no_alpha = Image.new("RGBA", dimensions, bg_color)
+		img_no_alpha.paste(img_resized, mask=img_resized)
+		img_bmp = img_no_alpha.quantize(palette_size)
+
+		with io.BytesIO() as bmp_bytes:
+			img_bmp.save(bmp_bytes, "BMP")
+			bmp_bytes_string = bmp_bytes.getvalue()
+
+		return bmp_bytes_string
 
 	# Finds the biggest thumbnail
 	def find_best_thumbnail(self, gcode_encoded_images):
